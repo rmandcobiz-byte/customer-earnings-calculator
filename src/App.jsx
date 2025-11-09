@@ -67,7 +67,6 @@ const rowStyle = {
 const MonthlyTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const p = payload[0]?.payload || {};
-  // Determine which bar was hovered
   const item = payload[0];
   const isUtility = item?.dataKey === 'Utility';
   const isPPA = item?.dataKey === 'PPA';
@@ -104,6 +103,63 @@ const LineTooltip = ({ active, payload, label }) => {
     </div>
   );
 };
+
+/* ---------------- UI helpers ---------------- */
+/**
+ * Mobile-friendly Field component:
+ * - If type="number" is passed, we render a text input with inputMode="decimal"
+ *   to get the numeric keypad without iOS zoom/spinners.
+ * - Suffix is non-interactive so it won't capture taps.
+ */
+const Field = ({ id, label, suffix, helper, error, ...rest }) => {
+  const isNumber = rest.type === 'number';
+
+  const inputProps = isNumber
+    ? {
+        ...rest,
+        type: 'text', // avoid mobile number input quirks
+        inputMode: 'decimal', // numeric keypad with decimal
+        pattern: '[0-9]*[.,]?[0-9]*',
+        enterKeyHint: 'done',
+        autoComplete: 'off',
+        onWheel: (e) => e.currentTarget.blur(), // prevent value change on scroll
+      }
+    : rest;
+
+  return (
+    <div className="field">
+      <label htmlFor={id} className="label">
+        {label}
+      </label>
+      <div className={`control ${error ? 'has-error' : ''}`}>
+        <input id={id} aria-describedby={helper ? `${id}-help` : undefined} {...inputProps} />
+        {suffix ? (
+          <span className="suffix" aria-hidden="true">
+            {suffix}
+          </span>
+        ) : null}
+      </div>
+      {helper ? (
+        <div id={`${id}-help`} className="help">
+          {helper}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="error" role="alert" aria-live="polite">
+          {error}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const Readonly = ({ label, value, helper }) => (
+  <div className="ro">
+    <div className="ro-label">{label}</div>
+    <div className="ro-value">{value}</div>
+    {helper ? <div className="ro-help">{helper}</div> : null}
+  </div>
+);
 
 export default function App() {
   const rootRef = useRef(null);
@@ -203,8 +259,10 @@ export default function App() {
   }, [calcKey]); // only recompute on explicit Calculate
 
   /* ---------------- handlers ---------------- */
+  // Accept both "." and "," decimals from mobile keyboards
   const onChange = (name, raw) => {
-    setInputs((p) => ({ ...p, [name]: raw === '' ? '' : Number(raw) }));
+    const cleaned = String(raw).replace(/,/g, '.');
+    setInputs((p) => ({ ...p, [name]: cleaned === '' ? '' : Number(cleaned) }));
   };
   const onBlur = (name) => setTouched((t) => ({ ...t, [name]: true }));
 
@@ -318,9 +376,6 @@ export default function App() {
   };
 
   /* ---------------- Charts data ---------------- */
-  // For better visuals: two series (Utility, PPA) across two categories,
-  // with only one active per row (the other is null). This lets us color them differently
-  // and keep a tidy legend + gradient fills.
   const monthlyBarData = useMemo(() => {
     const utilityRate =
       inputs.unitsMonth > 0 ? inputs.monthlyBill / inputs.unitsMonth : 0;
@@ -356,51 +411,12 @@ export default function App() {
     [results.yearly]
   );
 
-  /* ---------------- UI helpers ---------------- */
-  const Field = ({ id, label, suffix, helper, error, ...rest }) => (
-    <div className="field">
-      <label htmlFor={id} className="label">
-        {label}
-      </label>
-      <div className={`control ${error ? 'has-error' : ''}`}>
-        <input
-          id={id}
-          aria-describedby={helper ? `${id}-help` : undefined}
-          {...rest}
-        />
-        {suffix ? (
-          <span className="suffix" aria-hidden="true">
-            {suffix}
-          </span>
-        ) : null}
-      </div>
-      {helper ? (
-        <div id={`${id}-help`} className="help">
-          {helper}
-        </div>
-      ) : null}
-      {error ? (
-        <div className="error" role="alert" aria-live="polite">
-          {error}
-        </div>
-      ) : null}
-    </div>
-  );
-
-  const Readonly = ({ label, value, helper }) => (
-    <div className="ro">
-      <div className="ro-label">{label}</div>
-      <div className="ro-value">{value}</div>
-      {helper ? <div className="ro-help">{helper}</div> : null}
-    </div>
-  );
-
   /* ---------------- render ---------------- */
   return (
     <div className="app" ref={rootRef} id="app-root">
       <header className="header">
         <div className="title">
-          Solar PPA Savings Calculator
+          Mihira - Solar PPA Customer Savings Calculator
           <span className="badge">v1</span>
         </div>
         <div className="actions">
