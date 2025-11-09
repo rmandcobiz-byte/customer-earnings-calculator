@@ -16,12 +16,6 @@
   box-sizing: border-box;
 }
 
-html,
-body,
-#root,
-.app {
-  height: 100%;
-}
 body {
   margin: 0;
   background: linear-gradient(180deg, #0b1020, #0b1020 60%, #0a0f1d);
